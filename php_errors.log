@@ -1,0 +1,59 @@
+[25-Sep-2025 14:59:58 Europe/Berlin] PHP Fatal error:  Uncaught Error: Call to undefined function handleLogin() in C:\xampp\htdocs\employee-checkin-system\api.php:44
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\employee-checkin-system\api.php on line 44
+[25-Sep-2025 15:00:15 Europe/Berlin] PHP Fatal error:  Uncaught Error: Call to undefined function handleLogin() in C:\xampp\htdocs\employee-checkin-system\api.php:44
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\employee-checkin-system\api.php on line 44
+[25-Sep-2025 15:00:17 Europe/Berlin] PHP Fatal error:  Uncaught Error: Call to undefined function handleLogin() in C:\xampp\htdocs\employee-checkin-system\api.php:44
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\employee-checkin-system\api.php on line 44
+[25-Sep-2025 15:00:18 Europe/Berlin] PHP Fatal error:  Uncaught Error: Call to undefined function handleLogin() in C:\xampp\htdocs\employee-checkin-system\api.php:44
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\employee-checkin-system\api.php on line 44
+[25-Sep-2025 15:00:18 Europe/Berlin] PHP Fatal error:  Uncaught Error: Call to undefined function handleLogin() in C:\xampp\htdocs\employee-checkin-system\api.php:44
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\employee-checkin-system\api.php on line 44
+[25-Sep-2025 15:01:41 Europe/Berlin] PHP Fatal error:  Uncaught Error: Call to undefined function handleLogin() in C:\xampp\htdocs\employee-checkin-system\api.php:44
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\employee-checkin-system\api.php on line 44
+[25-Sep-2025 15:01:42 Europe/Berlin] PHP Fatal error:  Uncaught Error: Call to undefined function handleLogin() in C:\xampp\htdocs\employee-checkin-system\api.php:44
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\employee-checkin-system\api.php on line 44
+[25-Sep-2025 15:01:42 Europe/Berlin] PHP Fatal error:  Uncaught Error: Call to undefined function handleLogin() in C:\xampp\htdocs\employee-checkin-system\api.php:44
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\employee-checkin-system\api.php on line 44
+[25-Sep-2025 15:01:42 Europe/Berlin] PHP Fatal error:  Uncaught Error: Call to undefined function handleLogin() in C:\xampp\htdocs\employee-checkin-system\api.php:44
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\employee-checkin-system\api.php on line 44
+[25-Sep-2025 15:01:43 Europe/Berlin] PHP Fatal error:  Uncaught Error: Call to undefined function handleLogin() in C:\xampp\htdocs\employee-checkin-system\api.php:44
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\employee-checkin-system\api.php on line 44
+[25-Sep-2025 15:01:43 Europe/Berlin] PHP Fatal error:  Uncaught Error: Call to undefined function handleLogin() in C:\xampp\htdocs\employee-checkin-system\api.php:44
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\employee-checkin-system\api.php on line 44
+[25-Sep-2025 15:07:37 Europe/Berlin] PHP Fatal error:  Uncaught Error: mysqli_stmt::bind_param(): Argument #8 cannot be passed by reference in C:\xampp\htdocs\employee-checkin-system\users.php:112
+Stack trace:
+#0 C:\xampp\htdocs\employee-checkin-system\api.php(76): createUser()
+#1 {main}
+  thrown in C:\xampp\htdocs\employee-checkin-system\users.php on line 112
+[25-Sep-2025 15:07:42 Europe/Berlin] PHP Fatal error:  Uncaught Error: mysqli_stmt::bind_param(): Argument #8 cannot be passed by reference in C:\xampp\htdocs\employee-checkin-system\users.php:112
+Stack trace:
+#0 C:\xampp\htdocs\employee-checkin-system\api.php(76): createUser()
+#1 {main}
+  thrown in C:\xampp\htdocs\employee-checkin-system\users.php on line 112
+[25-Sep-2025 15:07:54 Europe/Berlin] PHP Fatal error:  Uncaught Error: mysqli_stmt::bind_param(): Argument #8 cannot be passed by reference in C:\xampp\htdocs\employee-checkin-system\users.php:112
+Stack trace:
+#0 C:\xampp\htdocs\employee-checkin-system\api.php(76): createUser()
+#1 {main}
+  thrown in C:\xampp\htdocs\employee-checkin-system\users.php on line 112

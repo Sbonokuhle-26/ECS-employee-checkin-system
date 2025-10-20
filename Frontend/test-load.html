@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Script Loading</title>
+</head>
+<body>
+    <h1>Testing Script Loading</h1>
+    <div id="status"></div>
+    
+    <script>
+        function logStatus(message) {
+            const status = document.getElementById('status');
+            status.innerHTML += '<p>' + message + '</p>';
+            console.log(message);
+        }
+        
+        // Test if scripts are loading
+        const scripts = [
+            'js/utils/constants.js',
+            'js/utils/helpers.js',
+            'js/services/StorageService.js',
+            'js/services/ApiService.js',
+            'js/services/ValidationService.js',
+            'js/models/User.js',
+            'js/models/Attendance.js',
+            'js/models/Department.js',
+            'js/core/Auth.js',
+            'js/core/Router.js',
+            'js/components/BaseComponent.js',
+            'js/components/LoginComponent.js',
+            'js/components/DashboardComponent.js',
+            'js/components/ManagerComponent.js',
+            'js/components/SuperAdminComponent.js',
+            'js/core/App.js'
+        ];
+        
+        let loaded = 0;
+        const total = scripts.length;
+        
+        scripts.forEach(script => {
+            const scriptElement = document.createElement('script');
+            scriptElement.src = script;
+            scriptElement.onload = () => {
+                loaded++;
+                logStatus('✓ Loaded: ' + script);
+                
+                if (loaded === total) {
+                    logStatus('✓ All scripts loaded successfully!');
+                    // Test if classes are available
+                    setTimeout(() => {
+                        const classes = [
+                            'Constants', 'Helpers', 'StorageService', 'ApiService', 
+                            'ValidationService', 'User', 'Attendance', 'Department',
+                            'Auth', 'Router', 'BaseComponent', 'LoginComponent',
+                            'DashboardComponent', 'ManagerComponent', 'SuperAdminComponent', 'App'
+                        ];
+                        
+                        classes.forEach(cls => {
+                            if (typeof window[cls] !== 'undefined') {
+                                logStatus('✓ Class available: ' + cls);
+                            } else {
+                                logStatus('✗ Class missing: ' + cls);
+                            }
+                        });
+                    }, 100);
+                }
+            };
+            scriptElement.onerror = () => {
+                loaded++;
+                logStatus('✗ Failed to load: ' + script);
+            };
+            document.head.appendChild(scriptElement);
+        });
+    </script>
+</body>
+</html>

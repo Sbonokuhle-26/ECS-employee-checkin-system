@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Dashboard - Check-In System</title>
+    <link rel="stylesheet" href="style/styles.css">
+</head>
+<body>
+    <!-- Employee Dashboard -->
+    <div id="employee-dashboard" class="screen active">
+        <header>
+            <h1>Employee Dashboard</h1>
+            <div class="user-info">
+                <span id="user-name"></span>
+                <button id="logout-btn">Logout</button>
+            </div>
+        </header>
+        
+        <main>
+            <div class="dashboard-section">
+                <h2>Check-In/Check-Out</h2>
+                <div class="status-panel">
+                    <p>Current Status: <span id="current-status">Not Checked In</span></p>
+                    <p>Last Check-In: <span id="last-checkin">-</span></p>
+                    <p>Last Check-Out: <span id="last-checkout">-</span></p>
+                </div>
+                <div class="action-buttons">
+                    <button id="checkin-btn" class="btn-primary">Check In</button>
+                    <button id="checkout-btn" class="btn-secondary">Check Out</button>
+                </div>
+                <div id="checkin-message" class="message"></div>
+            </div>
+            
+            <div class="dashboard-section">
+                <h2>Recent Activity</h2>
+                <div id="recent-activity" class="activity-list">
+                    <!-- Activity items -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!--Utils -->
+    <script src="js/1_utils/constants.js"></script>
+    <script src="js/1_utils/helpers.js"></script>
+    
+    <!-- Services -->
+    <script src="js/2_services/StorageService.js"></script>
+    <script src="js/2_services/ValidationService.js"></script>
+    <script src="js/2_services/ApiService.js"></script>
+    
+    <!--Models -->
+    <script src="js/3_models/User.js"></script>
+    <script src="js/3_models/Attendance.js"></script>
+    <script src="js/3_models/Department.js"></script>
+    
+    <!-- Core -->
+    <script src="js/4_core/Auth.js"></script>
+    <script src="js/4_core/Router.js"></script>
+    
+    <!--Components -->
+    <script src="js/5_components/BaseComponent.js"></script>
+    <script src="js/5_components/LoginComponent.js"></script>
+    <script src="js/5_components/DashboardComponent.js"></script>
+    <script src="js/5_components/ManagerComponent.js"></script>
+    <script src="js/5_components/SuperAdminComponent.js"></script>
+    
+    <!--Main App-->
+    <script src="js/4_core/App.js"></script>
+</body>
+</html>

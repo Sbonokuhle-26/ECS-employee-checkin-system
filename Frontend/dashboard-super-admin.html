@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin Dashboard - Check-In System</title>
+    <link rel="stylesheet" href="style/styles.css">
+</head>
+<body>
+    <!-- Super Admin Dashboard -->
+    <div id="super-admin-dashboard" class="screen active">
+        <header style="background: #dc3545; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;">
+            <h1 style="margin: 0;">Super Admin Dashboard <span class="super-admin-badge"></span></h1>
+            <div class="user-info" style="display: flex; align-items: center; gap: 15px;">
+                <span id="super-admin-user-name">Loading...</span>
+                <button id="manager-logout-btn" style="background: #343a40; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">Logout</button>
+            </div>
+        </header>
+        
+        <main style="padding: 20px; max-width: 1400px; margin: 0 auto;">
+            
+            <!-- Super Admin's own check-in/out section -->
+            <div class="dashboard-section">
+                <h2>My Check-In/Check-Out</h2>
+                <div class="status-panel">
+                    <p>Current Status: <span id="current-status">Not Checked In</span></p>
+                    <p>Last Check-In: <span id="last-checkin">-</span></p>
+                    <p>Last Check-Out: <span id="last-checkout">-</span></p>
+                </div>
+                <div class="action-buttons">
+                    <button id="manager-checkin-btn" class="btn-primary">Check In</button>
+                    <button id="manager-checkout-btn" class="btn-secondary">Check Out</button>
+                </div>
+                <div id="checkin-message" class="message"></div>
+            </div>
+            
+            <div class="dashboard-section">
+                <h2>User Management</h2>
+                <div class="action-buttons">
+                    <button id="add-employee-btn" class="btn-primary">Add New User</button>
+                </div>
+                
+                <!-- Add/Edit User Modal -->
+                <div id="employee-modal" class="modal">
+                    <div class="modal-content">
+                        <span class="close">&times;</span>
+                        <h3 id="modal-title">Add User</h3>
+                        <form id="employee-form">
+                            <input type="hidden" id="employee-id">
+                            <div class="form-group">
+                                <label for="first-name">First Name:</label>
+                                <input type="text" id="first-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="last-name">Last Name:</label>
+                                <input type="text" id="last-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="email">Email:</label>
+                                <input type="email" id="email" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="password">Password:</label>
+                                <input type="password" id="password" placeholder="Leave blank to keep current password">
+                            </div>
+                            <div class="form-group">
+                                <label for="department">Department:</label>
+                                <select id="department" required>
+                                    <option value="">Select Department</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="role">Role:</label>
+                                <select id="role" required>
+                                    <option value="employee">Employee</option>
+                                    <option value="manager">Manager</option>
+                                    <option value="super_admin">Super Admin</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="status">Status:</label>
+                                <select id="status" required>
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Allowed IP Addresses:</label>
+                                <div id="ip-addresses">
+                                    <!-- IP addresses-->
+                                </div>
+                                <button type="button" id="add-ip-btn" class="btn-secondary">Add IP Address</button>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn-primary">Save User</button>
+                                <button type="button" id="cancel-btn" class="btn-secondary">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <div id="employees-list" class="table-container">
+                    <!-- Users -->
+                </div>
+            </div>
+            
+            <div class="dashboard-section">
+                <h2>Reports</h2>
+                <div class="report-controls">
+                    <div class="form-group">
+                        <label for="report-start-date">Start Date:</label>
+                        <input type="date" id="report-start-date">
+                    </div>
+                    <div class="form-group">
+                        <label for="report-end-date">End Date:</label>
+                        <input type="date" id="report-end-date">
+                    </div>
+                    <div class="form-group">
+                        <label for="report-employee">Employee:</label>
+                        <select id="report-employee">
+                            <option value="">All Employees</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: flex-end; gap: 10px;">
+                        <button id="generate-report-btn" class="btn-primary">Generate Report</button>
+                        <button id="export-report-btn" class="btn-secondary">Export to CSV</button>
+                    </div>
+                </div>
+                
+                <div id="report-results" class="table-container">
+                    <!-- Report results -->
+                </div>
+            </div>
+            
+            <div class="dashboard-section">
+                <h2>Recent Activity</h2>
+                <div id="recent-activity" class="activity-list">
+                    <!-- Recent activity-->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!--Utils -->
+    <script src="js/1_utils/constants.js"></script>
+    <script src="js/1_utils/helpers.js"></script>
+    
+    <!-- Services -->
+    <script src="js/2_services/StorageService.js"></script>
+    <script src="js/2_services/ValidationService.js"></script>
+    <script src="js/2_services/ApiService.js"></script>
+    
+    <!--Models -->
+    <script src="js/3_models/User.js"></script>
+    <script src="js/3_models/Attendance.js"></script>
+    <script src="js/3_models/Department.js"></script>
+    
+    <!-- Core -->
+    <script src="js/4_core/Auth.js"></script>
+    <script src="js/4_core/Router.js"></script>
+    
+    <!--Components -->
+    <script src="js/5_components/BaseComponent.js"></script>
+    <script src="js/5_components/LoginComponent.js"></script>
+    <script src="js/5_components/DashboardComponent.js"></script>
+    <script src="js/5_components/ManagerComponent.js"></script>
+    <script src="js/5_components/SuperAdminComponent.js"></script>
+    
+    <!--Main App-->
+    <script src="js/4_core/App.js"></script>
+</body>
+</html>
