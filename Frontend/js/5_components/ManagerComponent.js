@@ -1,8 +1,10 @@
-class ManagerComponent extends DashboardComponent {
+class ManagerComponent extends BaseComponent {
     constructor() {
         super();
         this.employees = [];
         this.departments = [];
+        this.currentCheckIn = null;
+        this.recentActivity = [];
     }
 
     async render() {
@@ -28,15 +30,15 @@ class ManagerComponent extends DashboardComponent {
                     <div class="dashboard-section">
                         <h2>My Check-In/Check-Out</h2>
                         <div class="status-panel">
-                            <p>Current Status: <span id="current-status">Loading...</span></p>
-                            <p>Last Check-In: <span id="last-checkin">-</span></p>
-                            <p>Last Check-Out: <span id="last-checkout">-</span></p>
+                            <p>Current Status: <span id="manager-current-status">Loading...</span></p>
+                            <p>Last Check-In: <span id="manager-last-checkin">-</span></p>
+                            <p>Last Check-Out: <span id="manager-last-checkout">-</span></p>
                         </div>
                         <div class="action-buttons">
                             <button id="manager-checkin-btn" class="btn-primary" disabled>Check In</button>
                             <button id="manager-checkout-btn" class="btn-secondary" disabled>Check Out</button>
                         </div>
-                        <div id="checkin-message" class="message"></div>
+                        <div id="manager-checkin-message" class="message"></div>
                     </div>
                     
                     <!-- Employee Management -->
@@ -133,7 +135,7 @@ class ManagerComponent extends DashboardComponent {
                     <!-- Recent Activity -->
                     <div class="dashboard-section">
                         <h2>Recent Activity</h2>
-                        <div id="recent-activity" class="activity-list">
+                        <div id="manager-recent-activity" class="activity-list">
                             <div class="no-data">Loading recent activity...</div>
                         </div>
                     </div>
@@ -196,9 +198,17 @@ class ManagerComponent extends DashboardComponent {
     }
 
     async loadData() {
-        await super.loadData();
-        await this.loadEmployees();
-        await this.loadDepartments();
+        try {
+            await this.updateUserInfo();
+            await this.updateCheckInStatus();
+            await this.loadLastCheckInOut();
+            await this.loadEmployees();
+            await this.loadDepartments();
+            await this.loadRecentActivity();
+        } catch (error) {
+            console.error('Error loading dashboard data:', error);
+            this.showMessage('Error loading dashboard data', 'error', 'manager-checkin-message');
+        }
     }
 
     async updateUserInfo() {
@@ -208,17 +218,163 @@ class ManagerComponent extends DashboardComponent {
         }
     }
 
+    async updateCheckInStatus() {
+        try {
+            const response = await this.api.get(`${Constants.ENDPOINTS.ACTIVE_CHECKIN}?employee_id=${this.auth.currentUser.id}`);
+            
+            if (response.success) {
+                this.currentCheckIn = response.has_active_checkin ? response.checkin : null;
+                this.updateCheckInUI();
+            }
+        } catch (error) {
+            console.error('Error updating check-in status:', error);
+            this.showMessage('Error checking check-in status', 'error', 'manager-checkin-message');
+        }
+    }
+
+    updateCheckInUI() {
+        const statusElement = document.getElementById('manager-current-status');
+        const checkinBtn = document.getElementById('manager-checkin-btn');
+        const checkoutBtn = document.getElementById('manager-checkout-btn');
+
+        if (!statusElement || !checkinBtn || !checkoutBtn) return;
+
+        if (this.currentCheckIn) {
+            statusElement.textContent = 'Checked In';
+            statusElement.className = 'status-checked-in';
+            checkinBtn.disabled = true;
+            checkoutBtn.disabled = false;
+        } else {
+            statusElement.textContent = 'Not Checked In';
+            statusElement.className = 'status-not-checked-in';
+            checkinBtn.disabled = false;
+            checkoutBtn.disabled = true;
+        }
+    }
+
+    async handleCheckIn() {
+        const checkinBtn = document.getElementById('manager-checkin-btn');
+        const originalText = checkinBtn.textContent;
+
+        checkinBtn.textContent = 'Checking in...';
+        checkinBtn.disabled = true;
+        this.clearMessage('manager-checkin-message');
+
+        try {
+            const clientIP = await Helpers.getClientIP();
+            
+            // Check if IP is allowed
+            if (this.auth.currentUser.allowedIPs && this.auth.currentUser.allowedIPs.length > 0) {
+                const isAllowed = this.auth.currentUser.allowedIPs.some(ipObj => ipObj.ip_address === clientIP);
+                if (!isAllowed) {
+                    this.showMessage(`Check-in not allowed from this IP address: ${clientIP}`, 'error', 'manager-checkin-message');
+                    checkinBtn.textContent = originalText;
+                    checkinBtn.disabled = false;
+                    return;
+                }
+            }
+
+            const response = await this.api.post(Constants.ENDPOINTS.CHECK_IN, {
+                employee_id: this.auth.currentUser.id,
+                ip_address: clientIP,
+                location: 'Office',
+                device_fingerprint: Helpers.getDeviceFingerprint()
+            });
+
+            if (response.success) {
+                this.currentCheckIn = response.checkin_id;
+                this.updateCheckInUI();
+                this.showMessage(response.message, 'success', 'manager-checkin-message');
+                await this.loadRecentActivity();
+                await this.loadLastCheckInOut();
+            } else {
+                this.showMessage(response.error, 'error', 'manager-checkin-message');
+            }
+        } catch (error) {
+            console.error('Check-in error:', error);
+            this.showMessage(`Check-in failed: ${error.message}`, 'error', 'manager-checkin-message');
+        } finally {
+            checkinBtn.textContent = originalText;
+            checkinBtn.disabled = false;
+        }
+    }
+
+    async handleCheckOut() {
+        const checkoutBtn = document.getElementById('manager-checkout-btn');
+        const originalText = checkoutBtn.textContent;
+
+        checkoutBtn.textContent = 'Checking out...';
+        checkoutBtn.disabled = true;
+        this.clearMessage('manager-checkin-message');
+
+        try {
+            const response = await this.api.post(Constants.ENDPOINTS.CHECK_OUT, {
+                employee_id: this.auth.currentUser.id
+            });
+
+            if (response.success) {
+                this.currentCheckIn = null;
+                this.updateCheckInUI();
+                this.showMessage(response.message, 'success', 'manager-checkin-message');
+                await this.loadRecentActivity();
+                await this.loadLastCheckInOut();
+            } else {
+                this.showMessage(response.error, 'error', 'manager-checkin-message');
+            }
+        } catch (error) {
+            console.error('Check-out error:', error);
+            this.showMessage(`Check-out failed: ${error.message}`, 'error', 'manager-checkin-message');
+        } finally {
+            checkoutBtn.textContent = originalText;
+            checkoutBtn.disabled = false;
+        }
+    }
+
+    async loadLastCheckInOut() {
+        try {
+            const response = await this.api.get(`${Constants.ENDPOINTS.LAST_CHECKINOUT}?employee_id=${this.auth.currentUser.id}`);
+            
+            if (response.success) {
+                this.displayLastCheckInOut(response.data);
+            }
+        } catch (error) {
+            console.error('Error loading last check-in/out:', error);
+        }
+    }
+
+    displayLastCheckInOut(data) {
+        const lastCheckinElement = document.getElementById('manager-last-checkin');
+        const lastCheckoutElement = document.getElementById('manager-last-checkout');
+
+        if (lastCheckinElement) {
+            lastCheckinElement.textContent = data.last_checkin ? 
+                Helpers.formatDate(data.last_checkin) : '-';
+        }
+
+        if (lastCheckoutElement) {
+            lastCheckoutElement.textContent = data.last_checkout ? 
+                Helpers.formatDate(data.last_checkout) : '-';
+        }
+    }
+
     async loadEmployees() {
         try {
+            console.log('Loading employees for manager...');
             const response = await this.api.get(Constants.ENDPOINTS.USERS);
+            console.log('Employees response:', response);
+            
             if (response.success) {
                 this.employees = response.data.map(emp => new User(emp));
+                console.log('Employees loaded:', this.employees.length);
                 this.displayEmployees();
                 this.populateEmployeeFilter();
+            } else {
+                console.error('Failed to load employees:', response.error);
+                this.showMessage('Failed to load employees: ' + (response.error || 'Unknown error'), 'error');
             }
         } catch (error) {
             console.error('Error loading employees:', error);
-            this.showMessage('Failed to load employees', error);
+            this.showMessage('Failed to load employees: ' + error.message, 'error');
         }
     }
 
@@ -236,7 +392,10 @@ class ManagerComponent extends DashboardComponent {
 
     displayEmployees() {
         const container = document.getElementById('employees-list');
-        if (!container) return;
+        if (!container) {
+            console.error('Employees list container not found');
+            return;
+        }
 
         let html = `
             <div class="table-responsive">
@@ -306,7 +465,10 @@ class ManagerComponent extends DashboardComponent {
 
     populateDepartmentDropdown() {
         const select = document.getElementById('department');
-        if (!select) return;
+        if (!select) {
+            console.error('Department dropdown not found');
+            return;
+        }
 
         select.innerHTML = '<option value="">Select Department</option>';
         this.departments.forEach(dept => {
@@ -319,21 +481,43 @@ class ManagerComponent extends DashboardComponent {
 
     populateEmployeeFilter() {
         const select = document.getElementById('report-employee');
-        if (!select) return;
+        if (!select) {
+            console.error('Report employee dropdown not found');
+            return;
+        }
 
+        console.log('Populating employee filter with', this.employees.length, 'employees');
+        
+        // Clear existing options except the first one
         select.innerHTML = '<option value="">All Employees</option>';
+        
+        if (this.employees.length === 0) {
+            console.warn('No employees to populate in filter');
+            return;
+        }
+
         this.employees.forEach(employee => {
-            const option = document.createElement('option');
-            option.value = employee.id;
-            option.textContent = employee.fullName;
-            select.appendChild(option);
+            // Only show employees (not other managers or super admins)
+            if (employee.role === 'employee') {
+                const option = document.createElement('option');
+                option.value = employee.id;
+                option.textContent = employee.fullName;
+                select.appendChild(option);
+            }
         });
+
+        console.log('Employee filter populated with employees');
     }
 
     showEmployeeModal(employee = null) {
         const modal = document.getElementById('employee-modal');
         const title = document.getElementById('modal-title');
         const roleSelect = document.getElementById('role');
+
+        if (!modal || !title) {
+            console.error('Employee modal elements not found');
+            return;
+        }
 
         if (employee) {
             title.textContent = 'Edit Employee';
@@ -356,7 +540,9 @@ class ManagerComponent extends DashboardComponent {
 
     hideEmployeeModal() {
         const modal = document.getElementById('employee-modal');
-        modal.style.display = 'none';
+        if (modal) {
+            modal.style.display = 'none';
+        }
     }
 
     populateEmployeeForm(employee) {
@@ -370,58 +556,61 @@ class ManagerComponent extends DashboardComponent {
     }
 
     clearEmployeeForm() {
-        document.getElementById('employee-form').reset();
+        const form = document.getElementById('employee-form');
+        if (form) {
+            form.reset();
+        }
         document.getElementById('employee-id').value = '';
         document.getElementById('role').value = 'employee';
         document.getElementById('status').value = 'active';
     }
 
     async saveEmployee() {
-        const employeeData = {
-            first_name: document.getElementById('first-name').value.trim(),
-            last_name: document.getElementById('last-name').value.trim(),
-            email: document.getElementById('email').value.trim(),
-            department_id: document.getElementById('department').value,
-            role: document.getElementById('role').value,
-            status: document.getElementById('status').value
-        };
-
-        const password = document.getElementById('password').value;
-        if (password) {
-            employeeData.password = password;
-        }
-
-        const employeeId = document.getElementById('employee-id').value;
-        if (employeeId) {
-            employeeData.employee_id = employeeId;
-        }
-
-        // Validation
-        const errors = ValidationService.validateUserData(employeeData, !!employeeId);
-        if (errors.length > 0) {
-            this.showMessage(errors.join(', '), Constants.MESSAGE_TYPES.ERROR);
-            return;
-        }
-
-        // Managers cannot create managers
-        if (employeeData.role === 'manager' && this.auth.currentUser.role === 'manager') {
-            this.showMessage('Managers cannot create other managers', Constants.MESSAGE_TYPES.ERROR);
-            return;
-        }
-
         try {
-            const method = employeeId ? 'PUT' : 'POST';
-            const response = await this.api[method.toLowerCase()](Constants.ENDPOINTS.USERS, employeeData);
+            const employeeData = {
+                first_name: document.getElementById('first-name').value.trim(),
+                last_name: document.getElementById('last-name').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                department_id: document.getElementById('department').value,
+                role: document.getElementById('role').value,
+                status: document.getElementById('status').value
+            };
+
+            const password = document.getElementById('password').value;
+            if (password) {
+                employeeData.password = password;
+            }
+
+            const employeeId = document.getElementById('employee-id').value;
+            if (employeeId) {
+                employeeData.employee_id = employeeId;
+            }
+
+            // Validation
+            if (!employeeData.first_name || !employeeData.last_name || !employeeData.email || !employeeData.department_id) {
+                this.showMessage('Please fill all required fields', 'error');
+                return;
+            }
+
+            // Managers cannot create managers
+            if (employeeData.role === 'manager' && this.auth.currentUser.role === 'manager') {
+                this.showMessage('Managers cannot create other managers', 'error');
+                return;
+            }
+
+            const method = employeeId ? 'put' : 'post';
+            const response = await this.api[method](Constants.ENDPOINTS.USERS, employeeData);
 
             if (response.success) {
                 this.hideEmployeeModal();
                 await this.loadEmployees();
-                this.showMessage('Employee saved successfully!', success);
+                this.showMessage('Employee saved successfully!', 'success');
             } else {
-                this.showMessage(response.error, Constants.MESSAGE_TYPES.ERROR);
+                this.showMessage(response.error || 'Failed to save employee', 'error');
             }
         } catch (error) {
-            this.showMessage(`Error saving employee: ${error.message}`, Constants.MESSAGE_TYPES.ERROR);
+            console.error('Error saving employee:', error);
+            this.showMessage(`Error saving employee: ${error.message}`, 'error');
         }
     }
 
@@ -430,14 +619,14 @@ class ManagerComponent extends DashboardComponent {
         if (employee && this.auth.currentUser.canEdit(employee)) {
             this.showEmployeeModal(employee);
         } else {
-            this.showMessage('You do not have permission to edit this employee', Constants.MESSAGE_TYPES.ERROR);
+            this.showMessage('You do not have permission to edit this employee', 'error');
         }
     }
 
     async deleteEmployee(employeeId) {
         const employee = this.employees.find(emp => emp.id === employeeId);
         if (!employee || !this.auth.currentUser.canDelete(employee)) {
-            this.showMessage('You do not have permission to delete this employee', Constants.MESSAGE_TYPES.ERROR);
+            this.showMessage('You do not have permission to delete this employee', 'error');
             return;
         }
 
@@ -450,48 +639,52 @@ class ManagerComponent extends DashboardComponent {
 
             if (response.success) {
                 await this.loadEmployees();
-                this.showMessage('Employee deleted successfully!', Constants.MESSAGE_TYPES.SUCCESS);
+                this.showMessage('Employee deleted successfully!', 'success');
             } else {
-                this.showMessage(response.error, Constants.MESSAGE_TYPES.ERROR);
+                this.showMessage(response.error || 'Failed to delete employee', 'error');
             }
         } catch (error) {
-            this.showMessage(`Error deleting employee: ${error.message}`, Constants.MESSAGE_TYPES.ERROR);
+            this.showMessage(`Error deleting employee: ${error.message}`, 'error');
         }
     }
 
     async generateReport() {
-    const startDate = document.getElementById('report-start-date')?.value;
-    const endDate = document.getElementById('report-end-date')?.value;
-    const employeeId = document.getElementById('report-employee')?.value;
+        const startDate = document.getElementById('report-start-date')?.value;
+        const endDate = document.getElementById('report-end-date')?.value;
+        const employeeId = document.getElementById('report-employee')?.value;
 
-    if (!startDate || !endDate) {
-        this.showMessage('Please select both start and end dates', 'error');
-        return;
-    }
-
-    try {
-        let url = `${Constants.ENDPOINTS.REPORTS}?start_date=${startDate}&end_date=${endDate}`;
-        if (employeeId) {
-            url += `&employee_id=${employeeId}`;
+        if (!startDate || !endDate) {
+            this.showMessage('Please select both start and end dates', 'error');
+            return;
         }
 
-        const response = await this.api.get(url);
+        try {
+            let url = `${Constants.ENDPOINTS.REPORTS}?start_date=${startDate}&end_date=${endDate}`;
+            if (employeeId) {
+                url += `&employee_id=${employeeId}`;
+            }
 
-        if (response.success) {
-            this.displayReportData(response.data);
-            this.showMessage('Report generated successfully!', 'success');
-        } else {
-            this.showMessage(response.error || 'Failed to generate report', 'error');
+            console.log('Generating report with URL:', url);
+            const response = await this.api.get(url);
+
+            if (response.success) {
+                this.displayReportData(response.data);
+                this.showMessage('Report generated successfully!', 'success');
+            } else {
+                this.showMessage(response.error || 'Failed to generate report', 'error');
+            }
+        } catch (error) {
+            console.error('Report generation error:', error);
+            this.showMessage(`Error generating report: ${error.message}`, 'error');
         }
-    } catch (error) {
-        console.error('Report generation error:', error);
-        this.showMessage(`Error generating report: ${error.message}`, 'error');
     }
-}
 
     displayReportData(data) {
         const container = document.getElementById('report-results');
-        if (!container) return;
+        if (!container) {
+            console.error('Report results container not found');
+            return;
+        }
 
         let html = `
             <div class="table-responsive">
@@ -504,13 +697,14 @@ class ManagerComponent extends DashboardComponent {
                             <th>Check-Out Time</th>
                             <th>Hours Worked</th>
                             <th>IP Address</th>
+                            <th>Location</th>
                         </tr>
                     </thead>
                     <tbody>
         `;
 
         if (!data || data.length === 0) {
-            html += `<tr><td colspan="6" class="no-data">No data found for the selected criteria</td></tr>`;
+            html += `<tr><td colspan="7" class="no-data">No data found for the selected criteria</td></tr>`;
         } else {
             data.forEach(item => {
                 const attendance = new Attendance(item);
@@ -522,6 +716,7 @@ class ManagerComponent extends DashboardComponent {
                         <td>${attendance.checkOutTimeFormatted}</td>
                         <td>${attendance.duration}</td>
                         <td>${attendance.ipAddress}</td>
+                        <td>${attendance.location || 'N/A'}</td>
                     </tr>
                 `;
             });
@@ -534,48 +729,48 @@ class ManagerComponent extends DashboardComponent {
     exportReport() {
         const table = document.querySelector('.report-table');
         if (!table) {
-            this.showMessage('No report data to export', Constants.MESSAGE_TYPES.ERROR);
+            this.showMessage('No report data to export', 'error');
             return;
         }
 
         try {
             let csv = [];
             const rows = table.querySelectorAll('tr');
-
+            
             for (let i = 0; i < rows.length; i++) {
                 let row = [];
                 const cols = rows[i].querySelectorAll('td, th');
-
+                
                 for (let j = 0; j < cols.length; j++) {
                     // Clean text and handle commas in data
                     const text = cols[j].innerText.replace(/"/g, '""');
                     row.push(`"${text}"`);
                 }
-
+                
                 csv.push(row.join(','));
             }
-
+            
             const csvString = csv.join('\n');
             const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
-
+            
             // Create filename with timestamp
             const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
             const filename = `attendance-report-${timestamp}.csv`;
-
+            
             link.setAttribute('href', url);
             link.setAttribute('download', filename);
             link.style.visibility = 'hidden';
-
+            
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-
-            this.showMessage('Report exported successfully!', Constants.MESSAGE_TYPES.SUCCESS);
+            
+            this.showMessage('Report exported successfully!', 'success');
         } catch (error) {
             console.error('Export error:', error);
-            this.showMessage('Error exporting report', Constants.MESSAGE_TYPES.ERROR);
+            this.showMessage('Error exporting report: ' + error.message, 'error');
         }
     }
 
@@ -583,7 +778,7 @@ class ManagerComponent extends DashboardComponent {
         try {
             const today = new Date().toISOString().split('T')[0];
             const response = await this.api.get(`${Constants.ENDPOINTS.REPORTS}?start_date=${today}&end_date=${today}`);
-
+            
             if (response.success) {
                 this.displayRecentActivity(response.data);
             }
@@ -594,7 +789,7 @@ class ManagerComponent extends DashboardComponent {
     }
 
     displayRecentActivity(activities) {
-        const container = document.getElementById('recent-activity');
+        const container = document.getElementById('manager-recent-activity');
         if (!container) return;
 
         container.innerHTML = '';
@@ -604,38 +799,79 @@ class ManagerComponent extends DashboardComponent {
             return;
         }
 
-        // Show only last 5 activities
-        activities.slice(0, 5).forEach(activity => {
+        // Show only last 10 activities for better overview
+        activities.slice(0, 10).forEach(activity => {
             const attendance = new Attendance(activity);
             const item = document.createElement('div');
             item.className = 'activity-item';
-
+            
+            // Only show check-out time if available
+            const checkoutDisplay = attendance.checkOutTime ? 
+                ` - ${attendance.checkOutTimeFormatted}` : 
+                ' (Active)';
+                
             item.innerHTML = `
                 <div class="activity-time">
-                    <strong>${attendance.employeeName}</strong><br>
-                    ${attendance.checkInTimeFormatted} - ${attendance.checkOutTimeFormatted}
+                    <strong>${attendance.employeeName}</strong> - ${attendance.departmentName}<br>
+                    ${attendance.checkInTimeFormatted}${checkoutDisplay}
                 </div>
                 <div class="activity-duration">${attendance.duration}</div>
             `;
-
+            
             container.appendChild(item);
         });
     }
 
+    showMessage(message, type = 'info', containerId = null) {
+        Helpers.showMessage(message, type, containerId ? document.getElementById(containerId) : null);
+    }
+
+    clearMessage(containerId = null) {
+        Helpers.clearMessage(containerId ? document.getElementById(containerId) : null);
+    }
+
     destroy() {
-        // Remove any additional event listeners
+        // Remove event listeners
+        const logoutBtn = document.getElementById('manager-logout-btn');
+        const checkinBtn = document.getElementById('manager-checkin-btn');
+        const checkoutBtn = document.getElementById('manager-checkout-btn');
         const addEmployeeBtn = document.getElementById('add-employee-btn');
         const generateReportBtn = document.getElementById('generate-report-btn');
         const exportReportBtn = document.getElementById('export-report-btn');
 
+        if (logoutBtn) {
+            logoutBtn.removeEventListener('click', () => {});
+        }
+        if (checkinBtn) {
+            checkinBtn.removeEventListener('click', () => {});
+        }
+        if (checkoutBtn) {
+            checkoutBtn.removeEventListener('click', () => {});
+        }
         if (addEmployeeBtn) {
-            addEmployeeBtn.removeEventListener('click', () => { });
+            addEmployeeBtn.removeEventListener('click', () => {});
         }
         if (generateReportBtn) {
-            generateReportBtn.removeEventListener('click', () => { });
+            generateReportBtn.removeEventListener('click', () => {});
         }
         if (exportReportBtn) {
-            exportReportBtn.removeEventListener('click', () => { });
+            exportReportBtn.removeEventListener('click', () => {});
+        }
+
+        // Remove form event listeners
+        const employeeForm = document.getElementById('employee-form');
+        if (employeeForm) {
+            employeeForm.removeEventListener('submit', () => {});
+        }
+
+        // Remove modal event listeners
+        const closeBtn = document.querySelector('.close');
+        const cancelBtn = document.getElementById('cancel-btn');
+        if (closeBtn) {
+            closeBtn.removeEventListener('click', () => {});
+        }
+        if (cancelBtn) {
+            cancelBtn.removeEventListener('click', () => {});
         }
 
         super.destroy();

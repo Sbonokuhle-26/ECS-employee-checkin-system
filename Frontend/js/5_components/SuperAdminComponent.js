@@ -17,7 +17,7 @@ class SuperAdminComponent extends ManagerComponent {
         return `
             <div id="super-admin-dashboard" class="screen active">
                 <header style="background: #dc3545; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;">
-                    <h1 style="margin: 0;">Super Admin Dashboard <span class="super-admin-badge">SUPER ADMIN</span></h1>
+                    <h1 style="margin: 0;">Super Admin Dashboard </h1>
                     <div class="user-info" style="display: flex; align-items: center; gap: 15px;">
                         <span id="super-admin-user-name">Loading...</span>
                         <button id="super-admin-logout-btn" style="background: #343a40; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">Logout</button>
@@ -356,31 +356,32 @@ class SuperAdminComponent extends ManagerComponent {
     }
 
     populateEmployeeFilter() {
-        const select = document.getElementById('report-user');
-        if (!select) {
-            console.error('Report user dropdown not found');
-            return;
-        }
-
-        console.log('Populating employee filter with', this.employees.length, 'employees');
-        
-        // Clear existing options except the first one
-        select.innerHTML = '<option value="">All Users</option>';
-        
-        if (this.employees.length === 0) {
-            console.warn('No employees to populate in filter');
-            return;
-        }
-
-        this.employees.forEach(employee => {
-            const option = document.createElement('option');
-            option.value = employee.id;
-            option.textContent = employee.fullName + ` (${employee.role})`;
-            select.appendChild(option);
-        });
-
-        console.log('Employee filter populated with', this.employees.length, 'users');
+    const select = document.getElementById('report-user');
+    if (!select) {
+        console.error('Report user dropdown not found');
+        return;
     }
+
+    console.log('Populating employee filter with', this.employees.length, 'employees');
+    
+    // Clear existing options except the first one
+    select.innerHTML = '<option value="">All Users</option>';
+    
+    if (this.employees.length === 0) {
+        console.warn('No employees to populate in filter');
+        return;
+    }
+
+    this.employees.forEach(employee => {
+        // Include ALL users (employees, managers, and super admins)
+        const option = document.createElement('option');
+        option.value = employee.id;
+        option.textContent = employee.fullName + ` (${employee.role})`;
+        select.appendChild(option);
+    });
+
+    console.log('Employee filter populated with', this.employees.length, 'users');
+}
 
     addIpAddressField(ip = '', description = '') {
         const container = document.getElementById('user-ip-addresses');
@@ -759,33 +760,38 @@ class SuperAdminComponent extends ManagerComponent {
     }
 
     displayRecentActivity(activities) {
-        const container = document.getElementById('recent-activity');
-        if (!container) return;
+    const container = document.getElementById('recent-activity');
+    if (!container) return;
 
-        container.innerHTML = '';
+    container.innerHTML = '';
 
-        if (!activities || activities.length === 0) {
-            container.innerHTML = '<div class="no-data">No recent activity found.</div>';
-            return;
-        }
-
-        // Show only last 5 activities
-        activities.slice(0, 5).forEach(activity => {
-            const attendance = new Attendance(activity);
-            const item = document.createElement('div');
-            item.className = 'activity-item';
-            
-            item.innerHTML = `
-                <div class="activity-time">
-                    <strong>${attendance.employeeName}</strong><br>
-                    ${attendance.checkInTimeFormatted} - ${attendance.checkOutTimeFormatted}
-                </div>
-                <div class="activity-duration">${attendance.duration}</div>
-            `;
-            
-            container.appendChild(item);
-        });
+    if (!activities || activities.length === 0) {
+        container.innerHTML = '<div class="no-data">No recent activity found.</div>';
+        return;
     }
+
+    // Show only last 10 activities for better overview
+    activities.slice(0, 10).forEach(activity => {
+        const attendance = new Attendance(activity);
+        const item = document.createElement('div');
+        item.className = 'activity-item';
+        
+        // Only show check-out time if available
+        const checkoutDisplay = attendance.checkOutTime ? 
+            ` - ${attendance.checkOutTimeFormatted}` : 
+            ' (Active)';
+            
+        item.innerHTML = `
+            <div class="activity-time">
+                <strong>${attendance.employeeName}</strong> - ${attendance.departmentName}<br>
+                ${attendance.checkInTimeFormatted}${checkoutDisplay}
+            </div>
+            <div class="activity-duration">${attendance.duration}</div>
+        `;
+        
+        container.appendChild(item);
+    });
+}
 
     // Override parent methods to ensure they work correctly
     async handleCheckIn() {

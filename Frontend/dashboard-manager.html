@@ -20,18 +20,18 @@
         <main style="padding: 20px; max-width: 1200px; margin: 0 auto;">
             <!-- Manager's own check-in/out section -->
             <div class="dashboard-section">
-                <h2>My Check-In/Check-Out</h2>
-                <div class="status-panel">
-                    <p>Current Status: <span id="current-status">Not Checked In</span></p>
-                    <p>Last Check-In: <span id="last-checkin">-</span></p>
-                    <p>Last Check-Out: <span id="last-checkout">-</span></p>
-                </div>
-                <div class="action-buttons">
-                    <button id="checkin-btn" class="btn-primary">Check In</button>
-                    <button id="checkout-btn" class="btn-secondary">Check Out</button>
-                </div>
-                <div id="checkin-message" class="message"></div>
-            </div>
+    <h2>My Check-In/Check-Out</h2>
+    <div class="status-panel">
+        <p>Current Status: <span id="manager-current-status">Not Checked In</span></p>
+        <p>Last Check-In: <span id="manager-last-checkin">-</span></p>
+        <p>Last Check-Out: <span id="manager-last-checkout">-</span></p>
+    </div>
+    <div class="action-buttons">
+        <button id="manager-checkin-btn" class="btn-primary">Check In</button>
+        <button id="manager-checkout-btn" class="btn-secondary">Check Out</button>
+    </div>
+    <div id="manager-checkin-message" class="message"></div>
+</div>
             
             <div class="dashboard-section">
                 <h2>Employee Management</h2>
@@ -130,12 +130,12 @@
                 </div>
             </div>
             
-            <div class="dashboard-section">
-                <h2>Recent Activity</h2>
-                <div id="recent-activity" class="activity-list">
-                    <!-- Recent activity-->
-                </div>
-            </div>
+           <div class="dashboard-section">
+    <h2>Recent Activity</h2>
+    <div id="manager-recent-activity" class="activity-list">
+        <!-- Activity items -->
+    </div>
+</div>
         </main>
     </div>
     
