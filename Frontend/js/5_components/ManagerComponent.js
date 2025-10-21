@@ -90,6 +90,17 @@ class ManagerComponent extends BaseComponent {
                                             <option value="inactive">Inactive</option>
                                         </select>
                                     </div>
+                                    <div class="form-group">
+                <label>Allowed IP Addresses:</label>
+                <div id="ip-addresses">
+                    <div class="ip-field">
+                        <input type="text" placeholder="IP Address" class="ip-address" value="192.168.1.100">
+                        <input type="text" placeholder="Description (optional)" class="ip-description" value="Main Office">
+                        <button type="button" class="btn-remove-ip">×</button>
+                    </div>
+                </div>
+                <button type="button" id="add-ip-btn" class="btn-secondary">Add IP Address</button>
+            </div>
                                     <div class="form-actions">
                                         <button type="submit" class="btn-primary">Save Employee</button>
                                         <button type="button" id="cancel-btn" class="btn-secondary">Cancel</button>
