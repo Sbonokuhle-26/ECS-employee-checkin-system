@@ -150,17 +150,17 @@ class ManagerComponent extends DashboardComponent {
         const logoutBtn = document.getElementById('manager-logout-btn');
         const checkinBtn = document.getElementById('manager-checkin-btn');
         const checkoutBtn = document.getElementById('manager-checkout-btn');
-        
+
         if (logoutBtn) {
             logoutBtn.addEventListener('click', () => {
                 this.auth.logout();
             });
         }
-        
+
         if (checkinBtn) {
             checkinBtn.addEventListener('click', () => this.handleCheckIn());
         }
-        
+
         if (checkoutBtn) {
             checkoutBtn.addEventListener('click', () => this.handleCheckOut());
         }
@@ -338,7 +338,7 @@ class ManagerComponent extends DashboardComponent {
         if (employee) {
             title.textContent = 'Edit Employee';
             this.populateEmployeeForm(employee);
-            
+
             // Managers cannot edit roles to manager
             if (employee.role === 'manager' && employee.id !== this.auth.currentUser.id) {
                 roleSelect.disabled = true;
@@ -460,33 +460,34 @@ class ManagerComponent extends DashboardComponent {
     }
 
     async generateReport() {
-        const startDate = document.getElementById('report-start-date')?.value;
-        const endDate = document.getElementById('report-end-date')?.value;
-        const employeeId = document.getElementById('report-employee')?.value;
+    const startDate = document.getElementById('report-start-date')?.value;
+    const endDate = document.getElementById('report-end-date')?.value;
+    const employeeId = document.getElementById('report-employee')?.value;
 
-        if (!startDate || !endDate) {
-            this.showMessage('Please select both start and end dates', Constants.MESSAGE_TYPES.ERROR);
-            return;
-        }
-
-        try {
-            const params = new URLSearchParams();
-            params.append('start_date', startDate);
-            params.append('end_date', endDate);
-            if (employeeId) params.append('employee_id', employeeId);
-
-            const response = await this.api.get(`${Constants.ENDPOINTS.REPORTS}?${params.toString()}`);
-
-            if (response.success) {
-                this.displayReportData(response.data);
-                this.showMessage('Report generated successfully!', Constants.MESSAGE_TYPES.SUCCESS);
-            } else {
-                this.showMessage(response.error, Constants.MESSAGE_TYPES.ERROR);
-            }
-        } catch (error) {
-            this.showMessage(`Error generating report: ${error.message}`, Constants.MESSAGE_TYPES.ERROR);
-        }
+    if (!startDate || !endDate) {
+        this.showMessage('Please select both start and end dates', 'error');
+        return;
     }
+
+    try {
+        let url = `${Constants.ENDPOINTS.REPORTS}?start_date=${startDate}&end_date=${endDate}`;
+        if (employeeId) {
+            url += `&employee_id=${employeeId}`;
+        }
+
+        const response = await this.api.get(url);
+
+        if (response.success) {
+            this.displayReportData(response.data);
+            this.showMessage('Report generated successfully!', 'success');
+        } else {
+            this.showMessage(response.error || 'Failed to generate report', 'error');
+        }
+    } catch (error) {
+        console.error('Report generation error:', error);
+        this.showMessage(`Error generating report: ${error.message}`, 'error');
+    }
+}
 
     displayReportData(data) {
         const container = document.getElementById('report-results');
@@ -540,37 +541,37 @@ class ManagerComponent extends DashboardComponent {
         try {
             let csv = [];
             const rows = table.querySelectorAll('tr');
-            
+
             for (let i = 0; i < rows.length; i++) {
                 let row = [];
                 const cols = rows[i].querySelectorAll('td, th');
-                
+
                 for (let j = 0; j < cols.length; j++) {
                     // Clean text and handle commas in data
                     const text = cols[j].innerText.replace(/"/g, '""');
                     row.push(`"${text}"`);
                 }
-                
+
                 csv.push(row.join(','));
             }
-            
+
             const csvString = csv.join('\n');
             const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
-            
+
             // Create filename with timestamp
             const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
             const filename = `attendance-report-${timestamp}.csv`;
-            
+
             link.setAttribute('href', url);
             link.setAttribute('download', filename);
             link.style.visibility = 'hidden';
-            
+
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            
+
             this.showMessage('Report exported successfully!', Constants.MESSAGE_TYPES.SUCCESS);
         } catch (error) {
             console.error('Export error:', error);
@@ -582,7 +583,7 @@ class ManagerComponent extends DashboardComponent {
         try {
             const today = new Date().toISOString().split('T')[0];
             const response = await this.api.get(`${Constants.ENDPOINTS.REPORTS}?start_date=${today}&end_date=${today}`);
-            
+
             if (response.success) {
                 this.displayRecentActivity(response.data);
             }
@@ -608,7 +609,7 @@ class ManagerComponent extends DashboardComponent {
             const attendance = new Attendance(activity);
             const item = document.createElement('div');
             item.className = 'activity-item';
-            
+
             item.innerHTML = `
                 <div class="activity-time">
                     <strong>${attendance.employeeName}</strong><br>
@@ -616,7 +617,7 @@ class ManagerComponent extends DashboardComponent {
                 </div>
                 <div class="activity-duration">${attendance.duration}</div>
             `;
-            
+
             container.appendChild(item);
         });
     }
@@ -628,13 +629,13 @@ class ManagerComponent extends DashboardComponent {
         const exportReportBtn = document.getElementById('export-report-btn');
 
         if (addEmployeeBtn) {
-            addEmployeeBtn.removeEventListener('click', () => {});
+            addEmployeeBtn.removeEventListener('click', () => { });
         }
         if (generateReportBtn) {
-            generateReportBtn.removeEventListener('click', () => {});
+            generateReportBtn.removeEventListener('click', () => { });
         }
         if (exportReportBtn) {
-            exportReportBtn.removeEventListener('click', () => {});
+            exportReportBtn.removeEventListener('click', () => { });
         }
 
         super.destroy();

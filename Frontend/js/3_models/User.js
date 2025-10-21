@@ -27,34 +27,37 @@ if (typeof User === 'undefined') {
         }
 
         canEdit(targetUser) {
-            if (!targetUser) return false;
-            if (this.id === targetUser.id) return false;
+    if (!targetUser) return false;
+    
+    // Users can always edit their own profile
+    if (this.id === targetUser.id) return true;
 
-            if (this.role === Constants.ROLES.SUPER_ADMIN) {
-                return true;
-            }
+    if (this.role === Constants.ROLES.SUPER_ADMIN) {
+        return true; // Super admin can edit anyone
+    }
 
-            if (this.role === Constants.ROLES.MANAGER) {
-                return targetUser.role === Constants.ROLES.EMPLOYEE;
-            }
+    if (this.role === Constants.ROLES.MANAGER) {
+        // Managers can edit employees but not other managers or super admins
+        return targetUser.role === Constants.ROLES.EMPLOYEE;
+    }
 
-            return false;
-        }
+    return false; // Employees can only edit themselves
+}
 
-        canDelete(targetUser) {
-            if (!targetUser) return false;
-            if (this.id === targetUser.id) return false;
+canDelete(targetUser) {
+    if (!targetUser) return false;
+    if (this.id === targetUser.id) return false; // Cannot delete yourself
 
-            if (this.role === Constants.ROLES.SUPER_ADMIN) {
-                return true;
-            }
+    if (this.role === Constants.ROLES.SUPER_ADMIN) {
+        return targetUser.role !== Constants.ROLES.SUPER_ADMIN; // Cannot delete other super admins
+    }
 
-            if (this.role === Constants.ROLES.MANAGER) {
-                return targetUser.role === Constants.ROLES.EMPLOYEE;
-            }
+    if (this.role === Constants.ROLES.MANAGER) {
+        return targetUser.role === Constants.ROLES.EMPLOYEE; // Can only delete employees
+    }
 
-            return false;
-        }
+    return false; // Employees cannot delete anyone
+}
 
         toJSON() {
             return {

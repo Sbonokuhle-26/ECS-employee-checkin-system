@@ -51,7 +51,7 @@ if (typeof ValidationService === 'undefined') {
 
             return errors;
         }
-        static validateIPs(ips) {
+       static validateIPs(ips) {
     const errors = [];
     
     if (!ips || ips.length === 0) {

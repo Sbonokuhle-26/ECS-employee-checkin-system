@@ -40,15 +40,15 @@ if (typeof Helpers === 'undefined') {
         }
 
         static isValidIP(ip) {
-            const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
-            if (!ipRegex.test(ip)) return false;
-            
-            const parts = ip.split('.');
-            return parts.every(part => {
-                const num = parseInt(part, 10);
-                return num >= 0 && num <= 255;
-            });
-        }
+    const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+    if (!ipRegex.test(ip)) return false;
+    
+    const parts = ip.split('.');
+    return parts.every(part => {
+        const num = parseInt(part, 10);
+        return num >= 0 && num <= 255;
+    });
+}
 
         // Get client IP address
         static async getClientIP() {

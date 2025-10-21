@@ -1,6 +1,9 @@
 class SuperAdminComponent extends ManagerComponent {
     constructor() {
         super();
+        this.employees = [];
+        this.departments = [];
+        this.currentCheckIn = null;
     }
 
     async render() {
@@ -14,7 +17,7 @@ class SuperAdminComponent extends ManagerComponent {
         return `
             <div id="super-admin-dashboard" class="screen active">
                 <header style="background: #dc3545; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;">
-                    <h1 style="margin: 0;">Super Admin Dashboard <span class="super-admin-badge" style="background: #ffc107; color: #000; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; margin-left: 10px;">SUPER ADMIN</span></h1>
+                    <h1 style="margin: 0;">Super Admin Dashboard <span class="super-admin-badge">SUPER ADMIN</span></h1>
                     <div class="user-info" style="display: flex; align-items: center; gap: 15px;">
                         <span id="super-admin-user-name">Loading...</span>
                         <button id="super-admin-logout-btn" style="background: #343a40; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">Logout</button>
@@ -31,8 +34,8 @@ class SuperAdminComponent extends ManagerComponent {
                             <p>Last Check-Out: <span id="last-checkout">-</span></p>
                         </div>
                         <div class="action-buttons">
-                            <button id="super-admin-checkin-btn" class="btn-primary" disabled>Check In</button>
-                            <button id="super-admin-checkout-btn" class="btn-secondary" disabled>Check Out</button>
+                            <button id="checkin-btn" class="btn-primary" disabled>Check In</button>
+                            <button id="checkout-btn" class="btn-secondary" disabled>Check Out</button>
                         </div>
                         <div id="checkin-message" class="message"></div>
                     </div>
@@ -154,10 +157,13 @@ class SuperAdminComponent extends ManagerComponent {
     }
 
     bindEvents() {
+        // Call parent bindEvents first
+        super.bindEvents();
+
         // Update button IDs for super admin dashboard
         const logoutBtn = document.getElementById('super-admin-logout-btn');
-        const checkinBtn = document.getElementById('super-admin-checkin-btn');
-        const checkoutBtn = document.getElementById('super-admin-checkout-btn');
+        const checkinBtn = document.getElementById('checkin-btn');
+        const checkoutBtn = document.getElementById('checkout-btn');
         
         if (logoutBtn) {
             logoutBtn.addEventListener('click', () => {
@@ -210,6 +216,13 @@ class SuperAdminComponent extends ManagerComponent {
         this.bindIpRemoveEvents();
     }
 
+    async loadData() {
+        await super.loadData();
+        await this.loadEmployees();
+        await this.loadDepartments();
+        this.populateEmployeeFilter(); // Make sure this is called after employees are loaded
+    }
+
     async updateUserInfo() {
         const userNameElement = document.getElementById('super-admin-user-name');
         if (userNameElement && this.auth.currentUser) {
@@ -217,9 +230,45 @@ class SuperAdminComponent extends ManagerComponent {
         }
     }
 
+    async loadEmployees() {
+        try {
+            console.log('Loading employees for super admin...');
+            const response = await this.api.get(Constants.ENDPOINTS.USERS);
+            console.log('Employees response:', response);
+            
+            if (response.success) {
+                this.employees = response.data.map(emp => new User(emp));
+                console.log('Employees loaded:', this.employees.length);
+                this.displayEmployees();
+                this.populateEmployeeFilter();
+            } else {
+                console.error('Failed to load employees:', response.error);
+                this.showMessage('Failed to load employees: ' + (response.error || 'Unknown error'), 'error');
+            }
+        } catch (error) {
+            console.error('Error loading employees:', error);
+            this.showMessage('Failed to load employees: ' + error.message, 'error');
+        }
+    }
+
+    async loadDepartments() {
+        try {
+            const response = await this.api.get(Constants.ENDPOINTS.DEPARTMENTS);
+            if (response.success) {
+                this.departments = response.data.map(dept => new Department(dept));
+                this.populateDepartmentDropdown();
+            }
+        } catch (error) {
+            console.error('Error loading departments:', error);
+        }
+    }
+
     displayEmployees() {
         const container = document.getElementById('users-list');
-        if (!container) return;
+        if (!container) {
+            console.error('Users list container not found');
+            return;
+        }
 
         let html = `
             <div class="table-responsive">
@@ -272,8 +321,74 @@ class SuperAdminComponent extends ManagerComponent {
         this.bindEmployeeActionEvents();
     }
 
+    bindEmployeeActionEvents() {
+        // Edit buttons
+        document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const employeeId = e.target.getAttribute('data-edit');
+                this.editEmployee(parseInt(employeeId));
+            });
+        });
+
+        // Delete buttons
+        document.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const employeeId = e.target.getAttribute('data-delete');
+                this.deleteEmployee(parseInt(employeeId));
+            });
+        });
+    }
+
+    populateDepartmentDropdown() {
+        const select = document.getElementById('user-department');
+        if (!select) {
+            console.error('Department dropdown not found');
+            return;
+        }
+
+        select.innerHTML = '<option value="">Select Department</option>';
+        this.departments.forEach(dept => {
+            const option = document.createElement('option');
+            option.value = dept.id;
+            option.textContent = dept.name;
+            select.appendChild(option);
+        });
+    }
+
+    populateEmployeeFilter() {
+        const select = document.getElementById('report-user');
+        if (!select) {
+            console.error('Report user dropdown not found');
+            return;
+        }
+
+        console.log('Populating employee filter with', this.employees.length, 'employees');
+        
+        // Clear existing options except the first one
+        select.innerHTML = '<option value="">All Users</option>';
+        
+        if (this.employees.length === 0) {
+            console.warn('No employees to populate in filter');
+            return;
+        }
+
+        this.employees.forEach(employee => {
+            const option = document.createElement('option');
+            option.value = employee.id;
+            option.textContent = employee.fullName + ` (${employee.role})`;
+            select.appendChild(option);
+        });
+
+        console.log('Employee filter populated with', this.employees.length, 'users');
+    }
+
     addIpAddressField(ip = '', description = '') {
         const container = document.getElementById('user-ip-addresses');
+        if (!container) {
+            console.error('IP addresses container not found');
+            return;
+        }
+        
         const field = document.createElement('div');
         field.className = 'ip-field';
         field.innerHTML = `
@@ -324,6 +439,11 @@ class SuperAdminComponent extends ManagerComponent {
         const title = document.getElementById('modal-title');
         const roleSelect = document.getElementById('user-role');
 
+        if (!modal || !title) {
+            console.error('User modal elements not found');
+            return;
+        }
+
         if (employee) {
             title.textContent = 'Edit User';
             this.populateUserForm(employee);
@@ -345,7 +465,9 @@ class SuperAdminComponent extends ManagerComponent {
 
     hideUserModal() {
         const modal = document.getElementById('user-modal');
-        modal.style.display = 'none';
+        if (modal) {
+            modal.style.display = 'none';
+        }
     }
 
     populateUserForm(employee) {
@@ -359,27 +481,34 @@ class SuperAdminComponent extends ManagerComponent {
 
         // Populate IP addresses
         const ipContainer = document.getElementById('user-ip-addresses');
-        ipContainer.innerHTML = '';
-        
-        if (employee.allowedIPs && employee.allowedIPs.length > 0) {
-            employee.allowedIPs.forEach(ip => {
-                this.addIpAddressField(ip.ip_address, ip.description);
-            });
-        } else {
-            this.addIpAddressField('192.168.1.100', 'Main Office');
+        if (ipContainer) {
+            ipContainer.innerHTML = '';
+            
+            if (employee.allowedIPs && employee.allowedIPs.length > 0) {
+                employee.allowedIPs.forEach(ip => {
+                    this.addIpAddressField(ip.ip_address, ip.description);
+                });
+            } else {
+                this.addIpAddressField('192.168.1.100', 'Main Office');
+            }
         }
     }
 
     clearUserForm() {
-        document.getElementById('user-form').reset();
+        const form = document.getElementById('user-form');
+        if (form) {
+            form.reset();
+        }
         document.getElementById('user-id').value = '';
         document.getElementById('user-role').value = 'employee';
         document.getElementById('user-status').value = 'active';
         
         // Clear IP addresses and add one default
         const ipContainer = document.getElementById('user-ip-addresses');
-        ipContainer.innerHTML = '';
-        this.addIpAddressField('192.168.1.100', 'Main Office');
+        if (ipContainer) {
+            ipContainer.innerHTML = '';
+            this.addIpAddressField('192.168.1.100', 'Main Office');
+        }
     }
 
     async saveUser() {
@@ -390,9 +519,27 @@ class SuperAdminComponent extends ManagerComponent {
                 email: document.getElementById('user-email').value.trim(),
                 department_id: document.getElementById('user-department').value,
                 role: document.getElementById('user-role').value,
-                status: document.getElementById('user-status').value,
-                allowed_ips: this.getIpAddresses()
+                status: document.getElementById('user-status').value
             };
+
+            // Get IP addresses
+            const ipFields = document.querySelectorAll('#user-ip-addresses .ip-field');
+            userData.allowed_ips = [];
+            
+            ipFields.forEach(field => {
+                const ip = field.querySelector('.ip-address').value.trim();
+                const description = field.querySelector('.ip-description').value.trim();
+                
+                if (ip) {
+                    if (!Helpers.isValidIP(ip)) {
+                        throw new Error(`Invalid IP address: ${ip}`);
+                    }
+                    userData.allowed_ips.push({
+                        ip_address: ip,
+                        description: description
+                    });
+                }
+            });
 
             const password = document.getElementById('user-password').value;
             if (password) {
@@ -405,34 +552,35 @@ class SuperAdminComponent extends ManagerComponent {
             }
 
             // Validation
-            const errors = ValidationService.validateUserData(userData, !!userId);
-            const ipErrors = ValidationService.validateIPs(userData.allowed_ips);
-            const allErrors = [...errors, ...ipErrors];
-            
-            if (allErrors.length > 0) {
-                this.showMessage(allErrors.join(', '), Constants.MESSAGE_TYPES.ERROR);
+            if (!userData.first_name || !userData.last_name || !userData.email || !userData.department_id) {
+                this.showMessage('Please fill all required fields', 'error');
+                return;
+            }
+
+            if (userData.allowed_ips.length === 0) {
+                this.showMessage('At least one valid IP address is required', 'error');
                 return;
             }
 
             // Prevent super admin from changing their own role
             if (userId && userId == this.auth.currentUser.id && userData.role !== 'super_admin') {
-                this.showMessage('Super Admin cannot change their own role', Constants.MESSAGE_TYPES.ERROR);
+                this.showMessage('Super Admin cannot change their own role', 'error');
                 return;
             }
 
-            const method = userId ? 'PUT' : 'POST';
-            const response = await this.api[method.toLowerCase()](Constants.ENDPOINTS.USERS, userData);
+            const method = userId ? 'put' : 'post';
+            const response = await this.api[method](Constants.ENDPOINTS.USERS, userData);
 
             if (response.success) {
                 this.hideUserModal();
-                await this.loadEmployees();
-                this.showMessage('User saved successfully!', Constants.MESSAGE_TYPES.SUCCESS);
+                await this.loadEmployees(); // This will reload employees and repopulate the filter
+                this.showMessage('User saved successfully!', 'success');
             } else {
-                this.showMessage(response.error, Constants.MESSAGE_TYPES.ERROR);
+                this.showMessage(response.error || 'Failed to save user', 'error');
             }
         } catch (error) {
             console.error('Error saving user:', error);
-            this.showMessage(`Error saving user: ${error.message}`, Constants.MESSAGE_TYPES.ERROR);
+            this.showMessage(`Error saving user: ${error.message}`, 'error');
         }
     }
 
@@ -440,13 +588,15 @@ class SuperAdminComponent extends ManagerComponent {
         const employee = this.employees.find(emp => emp.id === employeeId);
         if (employee) {
             this.showUserModal(employee);
+        } else {
+            this.showMessage('User not found', 'error');
         }
     }
 
     async deleteEmployee(employeeId) {
         const employee = this.employees.find(emp => emp.id === employeeId);
         if (!employee || !this.auth.currentUser.canDelete(employee)) {
-            this.showMessage('You do not have permission to delete this employee', Constants.MESSAGE_TYPES.ERROR);
+            this.showMessage('You do not have permission to delete this user', 'error');
             return;
         }
 
@@ -458,20 +608,98 @@ class SuperAdminComponent extends ManagerComponent {
             const response = await this.api.delete(Constants.ENDPOINTS.USERS, { employee_id: employeeId });
 
             if (response.success) {
-                await this.loadEmployees();
-                this.showMessage('User deleted successfully!', Constants.MESSAGE_TYPES.SUCCESS);
+                await this.loadEmployees(); // This will reload employees and repopulate the filter
+                this.showMessage('User deleted successfully!', 'success');
             } else {
-                this.showMessage(response.error, Constants.MESSAGE_TYPES.ERROR);
+                this.showMessage(response.error || 'Failed to delete user', 'error');
             }
         } catch (error) {
-            this.showMessage(`Error deleting user: ${error.message}`, Constants.MESSAGE_TYPES.ERROR);
+            this.showMessage(`Error deleting user: ${error.message}`, 'error');
         }
+    }
+
+    async generateReport() {
+        const startDate = document.getElementById('report-start-date')?.value;
+        const endDate = document.getElementById('report-end-date')?.value;
+        const employeeId = document.getElementById('report-user')?.value;
+
+        if (!startDate || !endDate) {
+            this.showMessage('Please select both start and end dates', 'error');
+            return;
+        }
+
+        try {
+            let url = `${Constants.ENDPOINTS.REPORTS}?start_date=${startDate}&end_date=${endDate}`;
+            if (employeeId) {
+                url += `&employee_id=${employeeId}`;
+            }
+
+            console.log('Generating report with URL:', url);
+            const response = await this.api.get(url);
+
+            if (response.success) {
+                this.displayReportData(response.data);
+                this.showMessage('Report generated successfully!', 'success');
+            } else {
+                this.showMessage(response.error || 'Failed to generate report', 'error');
+            }
+        } catch (error) {
+            console.error('Report generation error:', error);
+            this.showMessage(`Error generating report: ${error.message}`, 'error');
+        }
+    }
+
+    displayReportData(data) {
+        const container = document.getElementById('report-results');
+        if (!container) {
+            console.error('Report results container not found');
+            return;
+        }
+
+        let html = `
+            <div class="table-responsive">
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Department</th>
+                            <th>Check-In Time</th>
+                            <th>Check-Out Time</th>
+                            <th>Hours Worked</th>
+                            <th>IP Address</th>
+                            <th>Location</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        if (!data || data.length === 0) {
+            html += `<tr><td colspan="7" class="no-data">No data found for the selected criteria</td></tr>`;
+        } else {
+            data.forEach(item => {
+                const attendance = new Attendance(item);
+                html += `
+                    <tr>
+                        <td>${attendance.employeeName}</td>
+                        <td>${attendance.departmentName}</td>
+                        <td>${attendance.checkInTimeFormatted}</td>
+                        <td>${attendance.checkOutTimeFormatted}</td>
+                        <td>${attendance.duration}</td>
+                        <td>${attendance.ipAddress}</td>
+                        <td>${attendance.location || 'N/A'}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        html += `</tbody></table></div>`;
+        container.innerHTML = html;
     }
 
     exportReport() {
         const table = document.querySelector('.report-table');
         if (!table) {
-            this.showMessage('No report data to export', Constants.MESSAGE_TYPES.ERROR);
+            this.showMessage('No report data to export', 'error');
             return;
         }
 
@@ -509,10 +737,10 @@ class SuperAdminComponent extends ManagerComponent {
             link.click();
             document.body.removeChild(link);
             
-            this.showMessage('Report exported successfully!', Constants.MESSAGE_TYPES.SUCCESS);
+            this.showMessage('Report exported successfully!', 'success');
         } catch (error) {
             console.error('Export error:', error);
-            this.showMessage('Error exporting report', Constants.MESSAGE_TYPES.ERROR);
+            this.showMessage('Error exporting report: ' + error.message, 'error');
         }
     }
 
@@ -557,6 +785,154 @@ class SuperAdminComponent extends ManagerComponent {
             
             container.appendChild(item);
         });
+    }
+
+    // Override parent methods to ensure they work correctly
+    async handleCheckIn() {
+        const checkinBtn = document.getElementById('checkin-btn');
+        const originalText = checkinBtn.textContent;
+
+        checkinBtn.textContent = 'Checking in...';
+        checkinBtn.disabled = true;
+        this.clearMessage('checkin-message');
+
+        try {
+            const clientIP = await Helpers.getClientIP();
+            
+            // Check if IP is allowed
+            if (this.auth.currentUser.allowedIPs && this.auth.currentUser.allowedIPs.length > 0) {
+                const isAllowed = this.auth.currentUser.allowedIPs.some(ipObj => ipObj.ip_address === clientIP);
+                if (!isAllowed) {
+                    this.showMessage(`Check-in not allowed from this IP address: ${clientIP}`, 'error', 'checkin-message');
+                    checkinBtn.textContent = originalText;
+                    checkinBtn.disabled = false;
+                    return;
+                }
+            }
+
+            const response = await this.api.post(Constants.ENDPOINTS.CHECK_IN, {
+                employee_id: this.auth.currentUser.id,
+                ip_address: clientIP,
+                location: 'Office',
+                device_fingerprint: Helpers.getDeviceFingerprint()
+            });
+
+            if (response.success) {
+                this.currentCheckIn = response.checkin_id;
+                this.updateCheckInUI();
+                this.showMessage(response.message, 'success', 'checkin-message');
+                await this.loadRecentActivity();
+                await this.loadLastCheckInOut();
+            } else {
+                this.showMessage(response.error, 'error', 'checkin-message');
+            }
+        } catch (error) {
+            console.error('Check-in error:', error);
+            this.showMessage(`Check-in failed: ${error.message}`, 'error', 'checkin-message');
+        } finally {
+            checkinBtn.textContent = originalText;
+            checkinBtn.disabled = false;
+        }
+    }
+
+    async handleCheckOut() {
+        const checkoutBtn = document.getElementById('checkout-btn');
+        const originalText = checkoutBtn.textContent;
+
+        checkoutBtn.textContent = 'Checking out...';
+        checkoutBtn.disabled = true;
+        this.clearMessage('checkin-message');
+
+        try {
+            const response = await this.api.post(Constants.ENDPOINTS.CHECK_OUT, {
+                employee_id: this.auth.currentUser.id
+            });
+
+            if (response.success) {
+                this.currentCheckIn = null;
+                this.updateCheckInUI();
+                this.showMessage(response.message, 'success', 'checkin-message');
+                await this.loadRecentActivity();
+                await this.loadLastCheckInOut();
+            } else {
+                this.showMessage(response.error, 'error', 'checkin-message');
+            }
+        } catch (error) {
+            console.error('Check-out error:', error);
+            this.showMessage(`Check-out failed: ${error.message}`, 'error', 'checkin-message');
+        } finally {
+            checkoutBtn.textContent = originalText;
+            checkoutBtn.disabled = false;
+        }
+    }
+
+    async updateCheckInStatus() {
+        try {
+            const response = await this.api.get(`${Constants.ENDPOINTS.ACTIVE_CHECKIN}?employee_id=${this.auth.currentUser.id}`);
+            
+            if (response.success) {
+                this.currentCheckIn = response.has_active_checkin ? response.checkin : null;
+                this.updateCheckInUI();
+            }
+        } catch (error) {
+            console.error('Error updating check-in status:', error);
+            this.showMessage('Error checking check-in status', 'error');
+        }
+    }
+
+    updateCheckInUI() {
+        const statusElement = document.getElementById('current-status');
+        const checkinBtn = document.getElementById('checkin-btn');
+        const checkoutBtn = document.getElementById('checkout-btn');
+
+        if (!statusElement || !checkinBtn || !checkoutBtn) return;
+
+        if (this.currentCheckIn) {
+            statusElement.textContent = 'Checked In';
+            statusElement.className = 'status-checked-in';
+            checkinBtn.disabled = true;
+            checkoutBtn.disabled = false;
+        } else {
+            statusElement.textContent = 'Not Checked In';
+            statusElement.className = 'status-not-checked-in';
+            checkinBtn.disabled = false;
+            checkoutBtn.disabled = true;
+        }
+    }
+
+    async loadLastCheckInOut() {
+        try {
+            const response = await this.api.get(`${Constants.ENDPOINTS.LAST_CHECKINOUT}?employee_id=${this.auth.currentUser.id}`);
+            
+            if (response.success) {
+                this.displayLastCheckInOut(response.data);
+            }
+        } catch (error) {
+            console.error('Error loading last check-in/out:', error);
+        }
+    }
+
+    displayLastCheckInOut(data) {
+        const lastCheckinElement = document.getElementById('last-checkin');
+        const lastCheckoutElement = document.getElementById('last-checkout');
+
+        if (lastCheckinElement) {
+            lastCheckinElement.textContent = data.last_checkin ? 
+                Helpers.formatDate(data.last_checkin) : '-';
+        }
+
+        if (lastCheckoutElement) {
+            lastCheckoutElement.textContent = data.last_checkout ? 
+                Helpers.formatDate(data.last_checkout) : '-';
+        }
+    }
+
+    showMessage(message, type = 'info', containerId = null) {
+        Helpers.showMessage(message, type, containerId ? document.getElementById(containerId) : null);
+    }
+
+    clearMessage(containerId = null) {
+        Helpers.clearMessage(containerId ? document.getElementById(containerId) : null);
     }
 
     destroy() {
