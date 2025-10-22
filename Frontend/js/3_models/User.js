@@ -26,22 +26,22 @@ if (typeof User === 'undefined') {
             return this.role === role;
         }
 
-        canEdit(targetUser) {
+canEdit(targetUser) {
     if (!targetUser) return false;
     
-    // Users can always edit their own profile
-    if (this.id === targetUser.id) return true;
+    // Users CANNOT edit their own profile through user management
+    if (this.id === targetUser.id) return false;
 
     if (this.role === Constants.ROLES.SUPER_ADMIN) {
-        return true; // Super admin can edit anyone
+        return true; // Super admin can edit anyone except themselves
     }
 
     if (this.role === Constants.ROLES.MANAGER) {
-        // Managers can edit employees but not other managers or super admins
+        // Managers can only edit employees, not other managers or super admins
         return targetUser.role === Constants.ROLES.EMPLOYEE;
     }
 
-    return false; // Employees can only edit themselves
+    return false; // Employees cannot edit anyone
 }
 
 canDelete(targetUser) {

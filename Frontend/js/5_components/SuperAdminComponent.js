@@ -263,81 +263,86 @@ class SuperAdminComponent extends ManagerComponent {
         }
     }
 
-    displayEmployees() {
-        const container = document.getElementById('users-list');
-        if (!container) {
-            console.error('Users list container not found');
-            return;
-        }
+   displayEmployees() {
+    const container = document.getElementById('users-list');
+    if (!container) {
+        console.error('Users list container not found');
+        return;
+    }
 
-        let html = `
-            <div class="table-responsive">
-                <table class="employees-table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Department</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                            <th>Allowed IPs</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-
-        if (this.employees.length === 0) {
-            html += `<tr><td colspan="7" class="no-data">No users found</td></tr>`;
-        } else {
-            this.employees.forEach(employee => {
-                const canEdit = this.auth.currentUser.canEdit(employee);
-                const canDelete = this.auth.currentUser.canDelete(employee);
-                const isCurrentUser = employee.id === this.auth.currentUser.id;
-                const ipCount = employee.allowedIPs ? employee.allowedIPs.length : 0;
-
-                html += `
+    let html = `
+        <div class="table-responsive">
+            <table class="employees-table">
+                <thead>
                     <tr>
-                        <td>${employee.fullName} ${isCurrentUser ? '<strong>(You)</strong>' : ''}</td>
-                        <td>${employee.email}</td>
-                        <td>${employee.departmentName || 'N/A'}</td>
-                        <td><span class="role-badge role-${employee.role}">${employee.role}</span></td>
-                        <td><span class="status-badge status-${employee.status}">${employee.status}</span></td>
-                        <td>${ipCount} IP(s)</td>
-                        <td>
-                            ${canEdit ? `<button class="btn-edit" data-edit="${employee.id}">Edit</button>` : ''}
-                            ${canDelete ? `<button class="btn-delete" data-delete="${employee.id}">Delete</button>` : ''}
-                            ${!canEdit && !canDelete ? '<span style="color: #6c757d; font-style: italic;">No actions</span>' : ''}
-                        </td>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Department</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Allowed IPs</th>
+                        <th>Actions</th>
                     </tr>
-                `;
-            });
-        }
+                </thead>
+                <tbody>
+    `;
 
-        html += `</tbody></table></div>`;
-        container.innerHTML = html;
+    if (this.employees.length === 0) {
+        html += `<tr><td colspan="7" class="no-data">No users found</td></tr>`;
+    } else {
+        this.employees.forEach(employee => {
+            const canEdit = this.auth.currentUser.canEdit(employee);
+            const canDelete = this.auth.currentUser.canDelete(employee);
+            const isCurrentUser = employee.id === this.auth.currentUser.id;
+            const ipCount = employee.allowedIPs ? employee.allowedIPs.length : 0;
 
-        // Add event listeners for action buttons
-        this.bindEmployeeActionEvents();
+            html += `
+                <tr>
+                    <td>${employee.fullName} ${isCurrentUser ? '<strong>(You)</strong>' : ''}</td>
+                    <td>${employee.email}</td>
+                    <td>${employee.departmentName || 'N/A'}</td>
+                    <td><span class="role-badge role-${employee.role}">${employee.role}</span></td>
+                    <td><span class="status-badge status-${employee.status}">${employee.status}</span></td>
+                    <td>${ipCount} IP(s)</td>
+                    <td>
+                        ${canEdit ? `<button class="btn-edit" data-edit="${employee.id}">Edit</button>` : ''}
+                        ${canDelete ? `<button class="btn-delete" data-delete="${employee.id}">Delete</button>` : ''}
+                        ${!canEdit && !canDelete ? '<span style="color: #6c757d; font-style: italic;">No actions</span>' : ''}
+                    </td>
+                </tr>
+            `;
+        });
     }
 
-    bindEmployeeActionEvents() {
-        // Edit buttons
-        document.querySelectorAll('.btn-edit').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const employeeId = e.target.getAttribute('data-edit');
+    html += `</tbody></table></div>`;
+    container.innerHTML = html;
+
+    // Add event listeners for action buttons
+    this.bindEmployeeActionEvents();
+}
+   bindEmployeeActionEvents() {
+    // Edit buttons
+    document.querySelectorAll('.btn-edit').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const employeeId = e.target.getAttribute('data-edit');
+            console.log('Edit button clicked for employee:', employeeId);
+            if (employeeId) {
                 this.editEmployee(parseInt(employeeId));
-            });
+            }
         });
+    });
 
-        // Delete buttons
-        document.querySelectorAll('.btn-delete').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const employeeId = e.target.getAttribute('data-delete');
+    // Delete buttons
+    document.querySelectorAll('.btn-delete').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const employeeId = e.target.getAttribute('data-delete');
+            console.log('Delete button clicked for employee:', employeeId);
+            if (employeeId) {
                 this.deleteEmployee(parseInt(employeeId));
-            });
+            }
         });
-    }
+    });
+}
 
     populateDepartmentDropdown() {
         const select = document.getElementById('user-department');
@@ -585,15 +590,27 @@ class SuperAdminComponent extends ManagerComponent {
         }
     }
 
-    async editEmployee(employeeId) {
-        const employee = this.employees.find(emp => emp.id === employeeId);
-        if (employee) {
-            this.showUserModal(employee);
-        } else {
-            this.showMessage('User not found', 'error');
-        }
+   async editEmployee(employeeId) {
+    console.log('editEmployee called with ID:', employeeId);
+    const employee = this.employees.find(emp => emp.id === employeeId);
+    console.log('Found employee:', employee);
+    
+    if (!employee) {
+        console.log('Employee not found');
+        this.showMessage('Employee not found', 'error');
+        return;
     }
-
+    
+    // Check permissions
+    if (!this.auth.currentUser.canEdit(employee)) {
+        console.log('User cannot edit this employee');
+        this.showMessage('You do not have permission to edit this employee', 'error');
+        return;
+    }
+    
+    console.log('User can edit, showing modal');
+    this.showUserModal(employee);
+}
     async deleteEmployee(employeeId) {
         const employee = this.employees.find(emp => emp.id === employeeId);
         if (!employee || !this.auth.currentUser.canDelete(employee)) {

@@ -161,52 +161,110 @@ class ManagerComponent extends BaseComponent {
 
         // Update button IDs for manager dashboard
         const logoutBtn = document.getElementById('manager-logout-btn');
-        const checkinBtn = document.getElementById('manager-checkin-btn');
-        const checkoutBtn = document.getElementById('manager-checkout-btn');
+    const checkinBtn = document.getElementById('manager-checkin-btn');
+    const checkoutBtn = document.getElementById('manager-checkout-btn');
 
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => {
-                this.auth.logout();
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            this.auth.logout();
+        });
+    }
+
+    if (checkinBtn) {
+        checkinBtn.addEventListener('click', () => this.handleCheckIn());
+    }
+
+    if (checkoutBtn) {
+        checkoutBtn.addEventListener('click', () => this.handleCheckOut());
+    }
+
+      // Manager specific events
+    document.getElementById('add-employee-btn')?.addEventListener('click', () => {
+        this.showEmployeeModal();
+    });
+
+    document.getElementById('employee-form')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.saveEmployee();
+    });
+
+    // ADD IP ADDRESS EVENT LISTENER
+    document.getElementById('add-ip-btn')?.addEventListener('click', () => {
+        this.addIpAddressField();
+    });
+
+    document.getElementById('generate-report-btn')?.addEventListener('click', () => {
+        this.generateReport();
+    });
+
+    document.getElementById('export-report-btn')?.addEventListener('click', () => {
+        this.exportReport();
+    });
+
+    document.querySelector('.close')?.addEventListener('click', () => {
+        this.hideEmployeeModal();
+    });
+
+    document.getElementById('cancel-btn')?.addEventListener('click', () => {
+        this.hideEmployeeModal();
+    });
+ // Set default report dates
+    Helpers.setDefaultReportDates();
+
+    // Bind IP remove buttons
+    this.bindIpRemoveEvents();
+}
+addIpAddressField(ip = '', description = '') {
+    const container = document.getElementById('ip-addresses');
+    if (!container) {
+        console.error('IP addresses container not found');
+        return;
+    }
+    
+    const field = document.createElement('div');
+    field.className = 'ip-field';
+    field.innerHTML = `
+        <input type="text" placeholder="IP Address" value="${ip}" class="ip-address">
+        <input type="text" placeholder="Description (optional)" value="${description}" class="ip-description">
+        <button type="button" class="btn-remove-ip">×</button>
+    `;
+    container.appendChild(field);
+    
+    // Bind remove event to the new button
+    field.querySelector('.btn-remove-ip').addEventListener('click', function() {
+        field.remove();
+    });
+}
+
+bindIpRemoveEvents() {
+    document.querySelectorAll('.btn-remove-ip').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.parentElement.remove();
+        });
+    });
+}
+
+getIpAddresses() {
+    const ipFields = document.querySelectorAll('#ip-addresses .ip-field');
+    const ips = [];
+    
+    ipFields.forEach(field => {
+        const ip = field.querySelector('.ip-address').value.trim();
+        const description = field.querySelector('.ip-description').value.trim();
+        
+        if (ip) {
+            if (!Helpers.isValidIP(ip)) {
+                throw new Error(`Invalid IP address: ${ip}`);
+            }
+            ips.push({
+                ip_address: ip,
+                description: description
             });
         }
-
-        if (checkinBtn) {
-            checkinBtn.addEventListener('click', () => this.handleCheckIn());
-        }
-
-        if (checkoutBtn) {
-            checkoutBtn.addEventListener('click', () => this.handleCheckOut());
-        }
-
-        // Manager specific events
-        document.getElementById('add-employee-btn')?.addEventListener('click', () => {
-            this.showEmployeeModal();
-        });
-
-        document.getElementById('employee-form')?.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.saveEmployee();
-        });
-
-        document.getElementById('generate-report-btn')?.addEventListener('click', () => {
-            this.generateReport();
-        });
-
-        document.getElementById('export-report-btn')?.addEventListener('click', () => {
-            this.exportReport();
-        });
-
-        document.querySelector('.close')?.addEventListener('click', () => {
-            this.hideEmployeeModal();
-        });
-
-        document.getElementById('cancel-btn')?.addEventListener('click', () => {
-            this.hideEmployeeModal();
-        });
-
-        // Set default report dates
-        Helpers.setDefaultReportDates();
-    }
+    });
+    
+    return ips;
+}
 
     async loadData() {
         try {
@@ -401,78 +459,85 @@ class ManagerComponent extends BaseComponent {
         }
     }
 
-    displayEmployees() {
-        const container = document.getElementById('employees-list');
-        if (!container) {
-            console.error('Employees list container not found');
-            return;
-        }
-
-        let html = `
-            <div class="table-responsive">
-                <table class="employees-table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Department</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-
-        if (this.employees.length === 0) {
-            html += `<tr><td colspan="6" class="no-data">No employees found</td></tr>`;
-        } else {
-            this.employees.forEach(employee => {
-                const canEdit = this.auth.currentUser.canEdit(employee);
-                const canDelete = this.auth.currentUser.canDelete(employee);
-                const isCurrentUser = employee.id === this.auth.currentUser.id;
-
-                html += `
-                    <tr>
-                        <td>${employee.fullName} ${isCurrentUser ? '<strong>(You)</strong>' : ''}</td>
-                        <td>${employee.email}</td>
-                        <td>${employee.departmentName || 'N/A'}</td>
-                        <td><span class="role-badge role-${employee.role}">${employee.role}</span></td>
-                        <td><span class="status-badge status-${employee.status}">${employee.status}</span></td>
-                        <td>
-                            ${canEdit ? `<button class="btn-edit" data-edit="${employee.id}">Edit</button>` : ''}
-                            ${canDelete ? `<button class="btn-delete" data-delete="${employee.id}">Delete</button>` : ''}
-                            ${!canEdit && !canDelete ? '<span style="color: #6c757d; font-style: italic;">No actions</span>' : ''}
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        html += `</tbody></table></div>`;
-        container.innerHTML = html;
-
-        // Add event listeners for action buttons
-        this.bindEmployeeActionEvents();
+   // In ManagerComponent.js - Update displayEmployees method
+displayEmployees() {
+    const container = document.getElementById('employees-list');
+    if (!container) {
+        console.error('Employees list container not found');
+        return;
     }
+
+    let html = `
+        <div class="table-responsive">
+            <table class="employees-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Department</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    if (this.employees.length === 0) {
+        html += `<tr><td colspan="6" class="no-data">No employees found</td></tr>`;
+    } else {
+        this.employees.forEach(employee => {
+            const canEdit = this.auth.currentUser.canEdit(employee);
+            const canDelete = this.auth.currentUser.canDelete(employee);
+            const isCurrentUser = employee.id === this.auth.currentUser.id;
+
+            html += `
+                <tr>
+                    <td>${employee.fullName} ${isCurrentUser ? '<strong>(You)</strong>' : ''}</td>
+                    <td>${employee.email}</td>
+                    <td>${employee.departmentName || 'N/A'}</td>
+                    <td><span class="role-badge role-${employee.role}">${employee.role}</span></td>
+                    <td><span class="status-badge status-${employee.status}">${employee.status}</span></td>
+                    <td>
+                        ${canEdit ? `<button class="btn-edit" data-edit="${employee.id}">Edit</button>` : ''}
+                        ${canDelete ? `<button class="btn-delete" data-delete="${employee.id}">Delete</button>` : ''}
+                        ${!canEdit && !canDelete ? '<span style="color: #6c757d; font-style: italic;">No actions</span>' : ''}
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    html += `</tbody></table></div>`;
+    container.innerHTML = html;
+
+    // Add event listeners for action buttons
+    this.bindEmployeeActionEvents();
+}
 
     bindEmployeeActionEvents() {
-        // Edit buttons
-        document.querySelectorAll('.btn-edit').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const employeeId = e.target.getAttribute('data-edit');
+    // Edit buttons
+    document.querySelectorAll('.btn-edit').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const employeeId = e.target.getAttribute('data-edit');
+            console.log('Edit button clicked for employee:', employeeId);
+            if (employeeId) {
                 this.editEmployee(parseInt(employeeId));
-            });
+            }
         });
+    });
 
-        // Delete buttons
-        document.querySelectorAll('.btn-delete').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const employeeId = e.target.getAttribute('data-delete');
+     // Delete buttons
+    document.querySelectorAll('.btn-delete').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const employeeId = e.target.getAttribute('data-delete');
+            console.log('Delete button clicked for employee:', employeeId);
+            if (employeeId) {
                 this.deleteEmployee(parseInt(employeeId));
-            });
+            }
         });
-    }
+    });
+}
 
     populateDepartmentDropdown() {
         const select = document.getElementById('department');
@@ -520,34 +585,44 @@ class ManagerComponent extends BaseComponent {
         console.log('Employee filter populated with employees');
     }
 
-    showEmployeeModal(employee = null) {
-        const modal = document.getElementById('employee-modal');
-        const title = document.getElementById('modal-title');
-        const roleSelect = document.getElementById('role');
+   // In ManagerComponent.js - Update showEmployeeModal method
+showEmployeeModal(employee = null) {
+    const modal = document.getElementById('employee-modal');
+    const title = document.getElementById('modal-title');
+    const roleSelect = document.getElementById('role');
 
-        if (!modal || !title) {
-            console.error('Employee modal elements not found');
-            return;
-        }
+    if (!modal || !title) {
+        console.error('Employee modal elements not found');
+        return;
+    }
 
-        if (employee) {
-            title.textContent = 'Edit Employee';
-            this.populateEmployeeForm(employee);
+    if (employee) {
+        title.textContent = 'Edit Employee';
+        this.populateEmployeeForm(employee);
 
-            // Managers cannot edit roles to manager
-            if (employee.role === 'manager' && employee.id !== this.auth.currentUser.id) {
-                roleSelect.disabled = true;
-            } else {
-                roleSelect.disabled = false;
-            }
+        // Managers cannot edit roles to manager
+        if (this.auth.currentUser.role === 'manager') {
+            roleSelect.disabled = true;
+            // Set the role to employee (managers can only edit employees)
+            roleSelect.value = 'employee';
         } else {
-            title.textContent = 'Add Employee';
-            this.clearEmployeeForm();
             roleSelect.disabled = false;
         }
-
-        modal.style.display = 'block';
+    } else {
+        title.textContent = 'Add Employee';
+        this.clearEmployeeForm();
+        
+        // For managers adding new employees, set role to employee and disable the field
+        if (this.auth.currentUser.role === 'manager') {
+            roleSelect.value = 'employee';
+            roleSelect.disabled = true;
+        } else {
+            roleSelect.disabled = false;
+        }
     }
+
+    modal.style.display = 'block';
+}
 
     hideEmployeeModal() {
         const modal = document.getElementById('employee-modal');
@@ -576,63 +651,114 @@ class ManagerComponent extends BaseComponent {
         document.getElementById('status').value = 'active';
     }
 
-    async saveEmployee() {
-        try {
-            const employeeData = {
-                first_name: document.getElementById('first-name').value.trim(),
-                last_name: document.getElementById('last-name').value.trim(),
-                email: document.getElementById('email').value.trim(),
-                department_id: document.getElementById('department').value,
-                role: document.getElementById('role').value,
-                status: document.getElementById('status').value
-            };
+  
+async saveEmployee() {
+    try {
+        const employeeData = {
+            first_name: document.getElementById('first-name').value.trim(),
+            last_name: document.getElementById('last-name').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            department_id: document.getElementById('department').value,
+            role: document.getElementById('role').value,
+            status: document.getElementById('status').value
+        };
 
-            const password = document.getElementById('password').value;
-            if (password) {
-                employeeData.password = password;
+        // Get IP addresses
+        const ipFields = document.querySelectorAll('#ip-addresses .ip-field');
+        employeeData.allowed_ips = [];
+        
+        ipFields.forEach(field => {
+            const ip = field.querySelector('.ip-address').value.trim();
+            const description = field.querySelector('.ip-description').value.trim();
+            
+            if (ip) {
+                if (!Helpers.isValidIP(ip)) {
+                    throw new Error(`Invalid IP address: ${ip}`);
+                }
+                employeeData.allowed_ips.push({
+                    ip_address: ip,
+                    description: description
+                });
             }
+        });
 
-            const employeeId = document.getElementById('employee-id').value;
-            if (employeeId) {
-                employeeData.employee_id = employeeId;
-            }
-
-            // Validation
-            if (!employeeData.first_name || !employeeData.last_name || !employeeData.email || !employeeData.department_id) {
-                this.showMessage('Please fill all required fields', 'error');
-                return;
-            }
-
-            // Managers cannot create managers
-            if (employeeData.role === 'manager' && this.auth.currentUser.role === 'manager') {
-                this.showMessage('Managers cannot create other managers', 'error');
-                return;
-            }
-
-            const method = employeeId ? 'put' : 'post';
-            const response = await this.api[method](Constants.ENDPOINTS.USERS, employeeData);
-
-            if (response.success) {
-                this.hideEmployeeModal();
-                await this.loadEmployees();
-                this.showMessage('Employee saved successfully!', 'success');
-            } else {
-                this.showMessage(response.error || 'Failed to save employee', 'error');
-            }
-        } catch (error) {
-            console.error('Error saving employee:', error);
-            this.showMessage(`Error saving employee: ${error.message}`, 'error');
+        const password = document.getElementById('password').value;
+        if (password) {
+            employeeData.password = password;
         }
-    }
 
-    async editEmployee(employeeId) {
-        const employee = this.employees.find(emp => emp.id === employeeId);
-        if (employee && this.auth.currentUser.canEdit(employee)) {
-            this.showEmployeeModal(employee);
+        const employeeId = document.getElementById('employee-id').value;
+        if (employeeId) {
+            employeeData.employee_id = employeeId;
+        }
+
+        // Validation
+        if (!employeeData.first_name || !employeeData.last_name || !employeeData.email || !employeeData.department_id) {
+            this.showMessage('Please fill all required fields', 'error');
+            return;
+        }
+
+        if (employeeData.allowed_ips.length === 0) {
+            this.showMessage('At least one valid IP address is required', 'error');
+            return;
+        }
+
+        // Managers cannot create managers
+        if (employeeData.role === 'manager' && this.auth.currentUser.role === 'manager') {
+            this.showMessage('Managers cannot create other managers', 'error');
+            return;
+        }
+
+        const method = employeeId ? 'put' : 'post';
+        const response = await this.api[method](Constants.ENDPOINTS.USERS, employeeData);
+
+        if (response.success) {
+            this.hideEmployeeModal();
+            await this.loadEmployees();
+            this.showMessage('Employee saved successfully!', 'success');
         } else {
-            this.showMessage('You do not have permission to edit this employee', 'error');
+            this.showMessage(response.error || 'Failed to save employee', 'error');
         }
+    } catch (error) {
+        console.error('Error saving employee:', error);
+        this.showMessage(`Error saving employee: ${error.message}`, 'error');
     }
+    if (this.auth.currentUser.role === 'manager') {
+    // Managers can only create/edit employees, not managers
+    if (employeeData.role === 'manager') {
+        this.showMessage('Managers cannot create or edit other managers', 'error');
+        return;
+    }
+    
+    // Ensure the role is set to employee for managers
+    employeeData.role = 'employee';
+}
+}
+
+   
+async editEmployee(employeeId) {
+    console.log('editEmployee called with ID:', employeeId);
+    
+    // Find the employee
+    const employee = this.employees.find(emp => emp.id === employeeId);
+    console.log('Found employee:', employee);
+    
+    if (!employee) {
+        console.log('Employee not found');
+        this.showMessage('Employee not found', 'error');
+        return;
+    }
+    
+    // Check permissions using the canEdit method
+    if (!this.auth.currentUser.canEdit(employee)) {
+        console.log('User cannot edit this employee');
+        this.showMessage('You do not have permission to edit this employee', 'error');
+        return;
+    }
+    
+    console.log('User can edit, showing modal');
+    this.showEmployeeModal(employee);
+}
 
     async deleteEmployee(employeeId) {
         const employee = this.employees.find(emp => emp.id === employeeId);

@@ -225,16 +225,16 @@ function updateUser() {
     
     // Permission checks
     if ($tokenData['role'] === 'manager') {
-    // Managers cannot edit other managers 
-    if ($currentRole === 'manager' && $employeeId != $tokenData['employee_id']) {
+    // Managers cannot edit other managers or themselves through user management
+    if ($currentRole === 'manager' || $employeeId == $tokenData['employee_id']) {
         http_response_code(403);
-        echo json_encode(['error' => 'Managers cannot edit other managers\' profiles']);
+        echo json_encode(['error' => 'Managers cannot edit managers or their own profile through user management']);
         $conn->close();
         return;
     }
-        
-        // Managers cannot change roles to manager or super_admin
-        if (isset($data['role']) && ($data['role'] === 'manager' || $data['role'] === 'super_admin')) {
+    
+    // Managers cannot change roles to manager or super_admin
+    if (isset($data['role']) && ($data['role'] === 'manager' || $data['role'] === 'super_admin')) {
         http_response_code(403);
         echo json_encode(['error' => 'Managers cannot assign manager or super admin roles']);
         $conn->close();
